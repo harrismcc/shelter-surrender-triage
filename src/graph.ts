@@ -1,4 +1,5 @@
 import type { Config } from "./config";
+import type { OutlookImportance } from "./domain";
 
 const GRAPH_ROOT = "https://graph.microsoft.com/v1.0";
 const IMMUTABLE_ID_PREFER = 'IdType="ImmutableId"';
@@ -58,7 +59,11 @@ export interface GraphOperations {
   getInboxId(): Promise<string>;
   findMailFolderId(displayName: string): Promise<string | null>;
   getMessage(messageId: string): Promise<GraphMessage | null>;
-  updateMessageCategories(messageId: string, categories: string[]): Promise<void>;
+  updateMessageTriage(
+    messageId: string,
+    categories: string[],
+    importance: OutlookImportance,
+  ): Promise<void>;
   moveMessage(messageId: string, destinationFolderId: string): Promise<void>;
 }
 
@@ -231,12 +236,16 @@ export class GraphClient implements GraphOperations {
     );
   }
 
-  async updateMessageCategories(messageId: string, categories: string[]): Promise<void> {
+  async updateMessageTriage(
+    messageId: string,
+    categories: string[],
+    importance: OutlookImportance,
+  ): Promise<void> {
     await this.request(
       "PATCH",
       `${this.mailboxPath}/messages/${encodeURIComponent(messageId)}`,
-      "update-categories",
-      { body: { categories }, prefer: IMMUTABLE_ID_PREFER },
+      "update-triage",
+      { body: { categories, importance }, prefer: IMMUTABLE_ID_PREFER },
     );
   }
 

@@ -17,10 +17,10 @@ function dependencies(options: {
   graph: GraphOperations;
   classifier: Classifier;
   operations: string[];
-  updated: string[][];
+  updates: Array<{ categories: string[]; importance: string }>;
 } {
   const operations: string[] = [];
-  const updated: string[][] = [];
+  const updates: Array<{ categories: string[]; importance: string }> = [];
   const message = options.message === undefined
     ? {
         id: "immutable-message-id",
@@ -44,9 +44,9 @@ function dependencies(options: {
       operations.push("message");
       return message;
     },
-    async updateMessageCategories(_id, categories) {
-      operations.push("categories");
-      updated.push(categories);
+    async updateMessageTriage(_id, categories, importance) {
+      operations.push("triage");
+      updates.push({ categories, importance });
       if (options.categoryFailure) throw options.categoryFailure;
     },
     async moveMessage() {
@@ -62,21 +62,24 @@ function dependencies(options: {
       };
     },
   };
-  return { graph, classifier, operations, updated };
+  return { graph, classifier, operations, updates };
 }
 
 describe("message processing", () => {
-  it("classifies, applies categories, and then moves in order", async () => {
-    const { graph, classifier, operations, updated } = dependencies();
+  it("classifies, applies categories and importance, and then moves in order", async () => {
+    const { graph, classifier, operations, updates } = dependencies();
 
     expect(await processMessage("immutable-message-id", config, graph, classifier)).toBe("processed");
-    expect(operations.slice(3)).toEqual(["classify", "message", "categories", "move"]);
-    expect(updated).toEqual([[
-      "Owned by intake",
-      "P2 — Urgent",
-      "Housing / moving",
-      "Household safety / domestic violence",
-    ]]);
+    expect(operations.slice(3)).toEqual(["classify", "message", "triage", "move"]);
+    expect(updates).toEqual([{
+      categories: [
+        "Owned by intake",
+        "P2 — Urgent",
+        "Housing / moving",
+        "Household safety / domestic violence",
+      ],
+      importance: "normal",
+    }]);
   });
 
   it("acknowledges a missing or already-moved message without classification", async () => {
@@ -98,7 +101,7 @@ describe("message processing", () => {
     }
   });
 
-  it("leaves a message unmoved when a transient category update fails", async () => {
+  it("leaves a message unmoved when a transient triage update fails", async () => {
     const { graph, classifier, operations } = dependencies({
       categoryFailure: new Error("transient"),
     });
@@ -106,7 +109,7 @@ describe("message processing", () => {
     await expect(processMessage("immutable-message-id", config, graph, classifier)).rejects.toThrow(
       "transient",
     );
-    expect(operations).toContain("categories");
+    expect(operations).toContain("triage");
     expect(operations).not.toContain("move");
   });
 });

@@ -6,6 +6,18 @@ export const PRIORITIES = [
 
 export type Priority = (typeof PRIORITIES)[number];
 
+export type OutlookImportance = "high" | "normal" | "low";
+
+const OUTLOOK_IMPORTANCE_BY_PRIORITY: Record<Priority, OutlookImportance> = {
+  "P1 — Immediate": "high",
+  "P2 — Urgent": "normal",
+  "P3 — Standard": "low",
+};
+
+export function outlookImportance(priority: Priority): OutlookImportance {
+  return OUTLOOK_IMPORTANCE_BY_PRIORITY[priority];
+}
+
 export const REASON_CATEGORIES = [
   "Housing / moving",
   "Behavior / energy / lack of time",

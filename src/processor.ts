@@ -1,6 +1,10 @@
 import type { Classifier } from "./classifier";
 import type { Config } from "./config";
-import { isMatchingSubmission, mergeOutlookCategories } from "./domain";
+import {
+  isMatchingSubmission,
+  mergeOutlookCategories,
+  outlookImportance,
+} from "./domain";
 import type { GraphOperations } from "./graph";
 
 export type ProcessResult = "processed" | "not-matching" | "already-moved-or-missing";
@@ -37,7 +41,11 @@ export async function processMessage(
     return "already-moved-or-missing";
   }
   const categories = mergeOutlookCategories(latestMessage.categories ?? [], classification);
-  await graph.updateMessageCategories(latestMessage.id, categories);
+  await graph.updateMessageTriage(
+    latestMessage.id,
+    categories,
+    outlookImportance(classification.priority),
+  );
   await graph.moveMessage(latestMessage.id, destinationFolderId);
   return "processed";
 }

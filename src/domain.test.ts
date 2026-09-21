@@ -6,6 +6,7 @@ import {
   type IssueCategory,
   isMatchingSubmission,
   mergeOutlookCategories,
+  outlookImportance,
   SUBSTANTIVE_ISSUE_CATEGORIES,
 } from "./domain";
 
@@ -45,6 +46,14 @@ describe("submission matching", () => {
 });
 
 describe("classification mapping", () => {
+  it("maps the three priority bands to Outlook importance in priority order", () => {
+    expect([
+      outlookImportance("P1 — Immediate"),
+      outlookImportance("P2 — Urgent"),
+      outlookImportance("P3 — Standard"),
+    ]).toEqual(["high", "normal", "low"]);
+  });
+
   it("sends one three-band priority Choice and one Noul per substantive category", () => {
     expect(TRIAGE_QUESTIONS.priority.type).toBe("choice");
     expect(Object.keys(TRIAGE_QUESTIONS.priority.criteria)).toEqual([

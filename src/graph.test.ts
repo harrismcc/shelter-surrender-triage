@@ -146,6 +146,31 @@ describe("Microsoft Graph client", () => {
     expect(JSON.parse(String(requests[1]?.init?.body))).toEqual({ color: "preset0" });
   });
 
+  it("updates message categories and importance together", async () => {
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    const fetcher = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+      const url = input.toString();
+      requests.push({ url, init });
+      if (url.startsWith("https://login.microsoftonline.com/")) {
+        return Response.json({ access_token: "access-token", expires_in: 3600 });
+      }
+      return new Response(null, { status: 204 });
+    };
+
+    await new GraphClient(config, fetcher as typeof fetch).updateMessageTriage(
+      "message/id",
+      ["P1 — Immediate", "Acute animal suffering"],
+      "high",
+    );
+
+    expect(requests[1]?.url).toEndWith("/messages/message%2Fid");
+    expect(requests[1]?.init?.method).toBe("PATCH");
+    expect(JSON.parse(String(requests[1]?.init?.body))).toEqual({
+      categories: ["P1 — Immediate", "Acute animal suffering"],
+      importance: "high",
+    });
+  });
+
   it("finds folders and categories that appear only on later pages", async () => {
     const folderPage2 = "https://graph.microsoft.com/v1.0/folders?page=2";
     const categoryPage2 = "https://graph.microsoft.com/v1.0/categories?page=2";

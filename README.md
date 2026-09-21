@@ -7,9 +7,11 @@ Decision support for animal shelter surrender-request triage, built as a Cloudfl
 1. A Microsoft Graph subscription sends created-message and lifecycle notifications to `POST /webhooks/graph`. The handler validates `clientState` and queues immutable message IDs or lifecycle work without reading or classifying a message. Lifecycle jobs immediately reauthorize expiring authorization, recreate removed subscriptions, or reconcile missed notifications.
 2. A scheduled run every ten minutes idempotently creates the destination folder and missing master categories, creates or renews the Graph subscription, replaces it if webhook endpoints change, and scans a bounded recent Inbox window for matching messages missed by notifications.
 3. The single-concurrency Queue consumer confirms the message is still in Inbox and exact-matches the configured sender and subject (case-insensitive after trimming). It requests a text body from Graph and sends the subject and body to Jev in one request. Jev selects one static staff-review priority (`P1`, `P2`, or `P3`) and independently evaluates each reason and safety tag.
-4. The consumer preserves unrelated Outlook categories, replaces managed triage categories with exactly one priority and all issue categories at or above `0.5`, then moves the message. `Other / unclear` is used only when no substantive category reaches the threshold. The classifier does not infer a response deadline; staff policy determines how each priority is handled.
+4. The consumer preserves unrelated Outlook categories, replaces managed triage categories with exactly one priority and all issue categories at or above `0.5`, maps `P1`, `P2`, and `P3` to Outlook's high, normal, and low importance levels, then moves the message. `Other / unclear` is used only when no substantive category reaches the threshold. The classifier does not infer a response deadline; staff policy determines how each priority is handled.
 
 The Inbox/folder location is the processing state. A failed Graph or Jev request leaves the message in Inbox for Queue retry and scheduled rediscovery. A duplicate whose immutable ID is missing or no longer in Inbox is acknowledged. Message bodies are neither stored nor logged.
+
+To display the destination folder in priority order, each staff member selects **Filter → Sort → Importance** once in Outlook. Microsoft Graph can assign message importance but does not expose per-user folder view settings.
 
 ## Microsoft and Cloudflare prerequisites
 

@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/cloudflare";
+
 import type { Config } from "./config";
 import { ISSUE_CATEGORIES, PRIORITIES } from "./domain";
 import type { IssueCategory, Priority } from "./domain";
@@ -134,13 +136,16 @@ export async function provisionRuntime(
   now = new Date(),
 ): Promise<void> {
   let folder = findFolder(await graph.listMailFolders(), config.destinationFolderName);
-  if (!folder) folder = await graph.createMailFolder(config.destinationFolderName);
+  const folderCreated = !folder;
+  if (folderCreated) folder = await graph.createMailFolder(config.destinationFolderName);
 
   const existingCategories = await graph.listMasterCategories();
-  for (const category of missingMasterCategories(existingCategories)) {
+  const missingCategories = missingMasterCategories(existingCategories);
+  const colorUpdates = masterCategoryColorUpdates(existingCategories);
+  for (const category of missingCategories) {
     await graph.createMasterCategory(category.displayName, category.color);
   }
-  for (const category of masterCategoryColorUpdates(existingCategories)) {
+  for (const category of colorUpdates) {
     await graph.updateMasterCategoryColor(category.id, category.color);
   }
 
@@ -169,4 +174,19 @@ export async function provisionRuntime(
   } else if (decision.action === "renew" && decision.subscription) {
     await graph.renewSubscription(decision.subscription.id, expirationDateTime);
   }
+
+  Sentry.getActiveSpan()?.setAttributes({
+    "triage.provisioning.folder_created": folderCreated,
+    "triage.provisioning.categories_created": missingCategories.length,
+    "triage.provisioning.category_colors_updated": colorUpdates.length,
+    "triage.provisioning.subscription_action": decision.action,
+  });
+  Sentry.metrics.count("triage.provisioning.runs", 1, {
+    attributes: {
+      folder_created: folderCreated,
+      categories_created: missingCategories.length,
+      category_colors_updated: colorUpdates.length,
+      subscription_action: decision.action,
+    },
+  });
 }

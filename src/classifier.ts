@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/cloudflare";
 import { choice, noul, TypeSafeClient } from "@typesafe-ai/sdk";
 
 import {
@@ -107,27 +108,42 @@ export class JevClassifier implements Classifier {
   }
 
   async classify(subject: string, body: string): Promise<Classification> {
-    const result = await this.client.systemOne({
-      model: this.model,
-      state: { subject, body },
-      questions: TRIAGE_QUESTIONS,
-    });
+    return Sentry.startSpan(
+      {
+        name: "TypeSafe classify surrender request",
+        op: "gen_ai.request",
+        attributes: {
+          "gen_ai.operation.name": "classify",
+          "gen_ai.provider.name": "typesafe",
+          "gen_ai.request.model": this.model,
+        },
+      },
+      async (span) => {
+        const result = await this.client.systemOne({
+          model: this.model,
+          state: { subject, body },
+          questions: TRIAGE_QUESTIONS,
+        });
 
-    const answers = result.answers as unknown as Record<
-      string,
-      { readonly type: string; readonly noul?: number }
-    >;
-    const scores = Object.fromEntries([
-      ...SUBSTANTIVE_ISSUE_CATEGORIES.map((category, index) => {
-        const answer = answers[`category_${index}`];
-        if (!answer || answer.type !== "noul" || typeof answer.noul !== "number") {
-          throw new Error(`TypeSafe returned an invalid answer for category_${index}`);
-        }
-        return [category, answer.noul];
-      }),
-      ["Other / unclear", 0],
-    ]) as Record<IssueCategory, number>;
+        const answers = result.answers as unknown as Record<
+          string,
+          { readonly type: string; readonly noul?: number }
+        >;
+        const scores = Object.fromEntries([
+          ...SUBSTANTIVE_ISSUE_CATEGORIES.map((category, index) => {
+            const answer = answers[`category_${index}`];
+            if (!answer || answer.type !== "noul" || typeof answer.noul !== "number") {
+              throw new Error(`TypeSafe returned an invalid answer for category_${index}`);
+            }
+            return [category, answer.noul];
+          }),
+          ["Other / unclear", 0],
+        ]) as Record<IssueCategory, number>;
 
-    return classificationFromAnswers(result.answers.priority.choice, scores);
+        const classification = classificationFromAnswers(result.answers.priority.choice, scores);
+        span.setAttribute("triage.category.count", classification.categories.length);
+        return classification;
+      },
+    );
   }
 }

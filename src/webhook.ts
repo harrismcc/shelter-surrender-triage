@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/cloudflare";
+
 import type { TriageQueueMessage } from "./config";
 
 interface GraphNotification {
@@ -42,12 +44,21 @@ export async function handleGraphWebhook(
   try {
     payload = (await request.json()) as GraphNotificationPayload;
   } catch {
+    Sentry.metrics.count("triage.webhook.rejected", 1, {
+      attributes: { reason: "invalid-json" },
+    });
     return Response.json({ error: "Invalid notification payload" }, { status: 400 });
   }
   if (!Array.isArray(payload.value)) {
+    Sentry.metrics.count("triage.webhook.rejected", 1, {
+      attributes: { reason: "invalid-payload" },
+    });
     return Response.json({ error: "Invalid notification payload" }, { status: 400 });
   }
   if (payload.value.some((notification) => notification.clientState !== expectedClientState)) {
+    Sentry.metrics.count("triage.webhook.rejected", 1, {
+      attributes: { reason: "invalid-client-state" },
+    });
     return Response.json({ error: "Invalid client state" }, { status: 401 });
   }
 
@@ -81,5 +92,18 @@ export async function handleGraphWebhook(
   await Promise.all(
     [...messageJobs, ...lifecycleJobs].map((job) => queue.send(job)),
   );
+  Sentry.metrics.count("triage.webhook.jobs", messageJobs.length, {
+    attributes: { kind: "message" },
+  });
+  for (const lifecycleEvent of LIFECYCLE_EVENTS) {
+    const count = lifecycleJobs.filter(
+      (job) => job.kind === "lifecycle" && job.lifecycleEvent === lifecycleEvent,
+    ).length;
+    if (count > 0) {
+      Sentry.metrics.count("triage.webhook.jobs", count, {
+        attributes: { kind: "lifecycle", lifecycle_event: lifecycleEvent },
+      });
+    }
+  }
   return new Response(null, { status: 202 });
 }

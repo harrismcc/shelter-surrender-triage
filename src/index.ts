@@ -40,11 +40,22 @@ const worker = {
   },
 
   async scheduled(_controller: ScheduledController, env: WorkerEnv): Promise<void> {
-    const config = readConfig(env);
-    const graph = new GraphClient(config);
-    await provisionRuntime(graph, config);
-    const enqueued = await reconcileInbox(graph, env.TRIAGE_QUEUE, config);
-    console.log(JSON.stringify({ stage: "reconciliation-complete", enqueued }));
+    await Sentry.withMonitor(
+      "triage-reconciliation",
+      async () => {
+        const config = readConfig(env);
+        const graph = new GraphClient(config);
+        await provisionRuntime(graph, config);
+        const enqueued = await reconcileInbox(graph, env.TRIAGE_QUEUE, config);
+        console.log(JSON.stringify({ stage: "reconciliation-complete", enqueued }));
+      },
+      {
+        schedule: { type: "crontab", value: "*/10 * * * *" },
+        checkinMargin: 2,
+        maxRuntime: 8,
+        timezone: "UTC",
+      },
+    );
   },
 
   async queue(batch: MessageBatch<TriageQueueMessage>, env: WorkerEnv): Promise<void> {
@@ -78,6 +89,28 @@ export default Sentry.withSentry<WorkerEnv, TriageQueueMessage, unknown, typeof 
   (env: WorkerEnv) => ({
     dsn: "https://d14b476de6348e93325eeb9a32f06645@o4511972984160256.ingest.us.sentry.io/4512126431461376",
     release: env?.SENTRY_RELEASE,
+    // This worker is low-volume, so retain complete traces for reliability investigations.
+    tracesSampleRate: 1,
+    tracePropagationTargets: [],
+    // Raw Graph URLs contain mailbox and message IDs. graph.ts and classifier.ts add sanitized spans.
+    ignoreSpans: [
+      {
+        op: "http.client",
+        attributes: { "sentry.origin": "auto.http.fetch" },
+      },
+    ],
+    beforeBreadcrumb: (breadcrumb) => breadcrumb.category === "fetch" ? null : breadcrumb,
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: false,
+      httpBodies: [],
+      urlQueryParams: false,
+      graphQL: { document: false, variables: false },
+      genAI: { inputs: false, outputs: false },
+      databaseQueryData: false,
+      stackFrameVariables: false,
+    },
   }),
   worker,
 );

@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/cloudflare";
+
 import type { Config } from "./config";
 import type { OutlookImportance } from "./domain";
 
@@ -104,54 +106,69 @@ export class GraphClient implements GraphOperations {
       return this.accessToken.value;
     }
 
-    const url = `https://login.microsoftonline.com/${encodeURIComponent(this.config.microsoftTenantId)}/oauth2/v2.0/token`;
-    const tokenBody = this.config.microsoftAuthMode === "delegated"
-      ? new URLSearchParams({
-          client_id: this.config.microsoftClientId,
-          refresh_token: this.refreshToken ?? "",
-          scope:
-            "offline_access https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/MailboxSettings.ReadWrite",
-          grant_type: "refresh_token",
-        })
-      : new URLSearchParams({
-          client_id: this.config.microsoftClientId,
-          client_secret: this.config.microsoftClientSecret ?? "",
-          scope: "https://graph.microsoft.com/.default",
-          grant_type: "client_credentials",
-        });
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      let response: Response;
-      try {
-        response = await this.fetcher(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: tokenBody,
-        });
-      } catch {
-        if (attempt === 2) throw new GraphError(0, "authentication");
-        await sleep(100 * 2 ** attempt);
-        continue;
-      }
-      if (response.ok) {
-        const data = (await response.json()) as {
-          access_token?: string;
-          expires_in?: number;
-          refresh_token?: string;
-        };
-        if (!data.access_token) throw new GraphError(502, "authentication-response");
-        if (data.refresh_token) this.refreshToken = data.refresh_token;
-        this.accessToken = {
-          value: data.access_token,
-          expiresAt: Date.now() + (data.expires_in ?? 3_600) * 1_000,
-        };
-        return data.access_token;
-      }
-      if (!(response.status === 429 || response.status >= 500) || attempt === 2) {
-        throw new GraphError(response.status, "authentication");
-      }
-      await sleep(100 * 2 ** attempt);
-    }
-    throw new GraphError(0, "authentication");
+    return Sentry.startSpan(
+      {
+        name: "Microsoft authentication",
+        op: "http.client",
+        attributes: {
+          "server.address": "login.microsoftonline.com",
+          "http.request.method": "POST",
+          "triage.auth.mode": this.config.microsoftAuthMode,
+        },
+      },
+      async (span) => {
+        const url = `https://login.microsoftonline.com/${encodeURIComponent(this.config.microsoftTenantId)}/oauth2/v2.0/token`;
+        const tokenBody = this.config.microsoftAuthMode === "delegated"
+          ? new URLSearchParams({
+              client_id: this.config.microsoftClientId,
+              refresh_token: this.refreshToken ?? "",
+              scope:
+                "offline_access https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/MailboxSettings.ReadWrite",
+              grant_type: "refresh_token",
+            })
+          : new URLSearchParams({
+              client_id: this.config.microsoftClientId,
+              client_secret: this.config.microsoftClientSecret ?? "",
+              scope: "https://graph.microsoft.com/.default",
+              grant_type: "client_credentials",
+            });
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          span.setAttribute("triage.retry.count", attempt);
+          let response: Response;
+          try {
+            response = await this.fetcher(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: tokenBody,
+            });
+          } catch {
+            if (attempt === 2) throw new GraphError(0, "authentication");
+            await sleep(100 * 2 ** attempt);
+            continue;
+          }
+          span.setAttribute("http.response.status_code", response.status);
+          if (response.ok) {
+            const data = (await response.json()) as {
+              access_token?: string;
+              expires_in?: number;
+              refresh_token?: string;
+            };
+            if (!data.access_token) throw new GraphError(502, "authentication-response");
+            if (data.refresh_token) this.refreshToken = data.refresh_token;
+            this.accessToken = {
+              value: data.access_token,
+              expiresAt: Date.now() + (data.expires_in ?? 3_600) * 1_000,
+            };
+            return data.access_token;
+          }
+          if (!(response.status === 429 || response.status >= 500) || attempt === 2) {
+            throw new GraphError(response.status, "authentication");
+          }
+          await sleep(100 * 2 ** attempt);
+        }
+        throw new GraphError(0, "authentication");
+      },
+    );
   }
 
   private async request<T>(
@@ -160,44 +177,59 @@ export class GraphClient implements GraphOperations {
     stage: string,
     options: { body?: unknown; prefer?: string; notFoundIsNull?: boolean } = {},
   ): Promise<T | null> {
-    const url = pathOrUrl.startsWith("https://") ? pathOrUrl : `${GRAPH_ROOT}${pathOrUrl}`;
-    let lastStatus = 0;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const headers = new Headers({ Authorization: `Bearer ${await this.token()}` });
-      if (options.prefer) headers.set("Prefer", options.prefer);
-      if (options.body !== undefined) headers.set("Content-Type", "application/json");
+    return Sentry.startSpan(
+      {
+        name: `Microsoft Graph ${stage}`,
+        op: "http.client",
+        attributes: {
+          "server.address": "graph.microsoft.com",
+          "http.request.method": method,
+          "triage.graph.stage": stage,
+        },
+      },
+      async (span) => {
+        const url = pathOrUrl.startsWith("https://") ? pathOrUrl : `${GRAPH_ROOT}${pathOrUrl}`;
+        let lastStatus = 0;
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          span.setAttribute("triage.retry.count", attempt);
+          const headers = new Headers({ Authorization: `Bearer ${await this.token()}` });
+          if (options.prefer) headers.set("Prefer", options.prefer);
+          if (options.body !== undefined) headers.set("Content-Type", "application/json");
 
-      let response: Response;
-      try {
-        response = await this.fetcher(url, {
-          method,
-          headers,
-          body: options.body === undefined ? undefined : JSON.stringify(options.body),
-        });
-      } catch {
-        if (attempt === 2) throw new GraphError(0, stage);
-        await sleep(100 * 2 ** attempt);
-        continue;
-      }
+          let response: Response;
+          try {
+            response = await this.fetcher(url, {
+              method,
+              headers,
+              body: options.body === undefined ? undefined : JSON.stringify(options.body),
+            });
+          } catch {
+            if (attempt === 2) throw new GraphError(0, stage);
+            await sleep(100 * 2 ** attempt);
+            continue;
+          }
 
-      lastStatus = response.status;
-      if (response.status === 404 && options.notFoundIsNull) return null;
-      if (response.ok) {
-        if (response.status === 204) return undefined as T;
-        return (await response.json()) as T;
-      }
-      if (!(response.status === 429 || response.status >= 500) || attempt === 2) {
-        throw new GraphError(response.status, stage);
-      }
-      const retryAfterHeader = response.headers.get("Retry-After");
-      const retryAfter = retryAfterHeader === null ? Number.NaN : Number(retryAfterHeader);
-      await sleep(
-        Number.isFinite(retryAfter)
-          ? Math.min(retryAfter * 1_000, 5_000)
-          : 100 * 2 ** attempt,
-      );
-    }
-    throw new GraphError(lastStatus, stage);
+          lastStatus = response.status;
+          span.setAttribute("http.response.status_code", response.status);
+          if (response.status === 404 && options.notFoundIsNull) return null;
+          if (response.ok) {
+            if (response.status === 204) return undefined as T;
+            return (await response.json()) as T;
+          }
+          if (!(response.status === 429 || response.status >= 500) || attempt === 2) {
+            throw new GraphError(response.status, stage);
+          }
+          const retryAfterHeader = response.headers.get("Retry-After");
+          const retryAfter = retryAfterHeader === null ? Number.NaN : Number(retryAfterHeader);
+          await sleep(
+            Number.isFinite(retryAfter)
+              ? Math.min(retryAfter * 1_000, 5_000)
+              : 100 * 2 ** attempt,
+          );
+        }
+        throw new GraphError(lastStatus, stage);
+      },
+    );
   }
 
   private async listCollection<T>(

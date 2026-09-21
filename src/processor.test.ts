@@ -58,7 +58,7 @@ function dependencies(options: {
       operations.push("classify");
       return {
         priority: "P2 — Urgent",
-        categories: ["Housing / moving", "Household safety / domestic violence"],
+        categories: ["Housing / moving", "Household safety"],
       };
     },
   };
@@ -76,7 +76,7 @@ describe("message processing", () => {
         "Owned by intake",
         "P2 — Urgent",
         "Housing / moving",
-        "Household safety / domestic violence",
+        "Household safety",
       ],
       importance: "normal",
     }]);

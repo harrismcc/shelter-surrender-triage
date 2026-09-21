@@ -26,35 +26,35 @@ type SubstantiveIssueCategory = (typeof SUBSTANTIVE_ISSUE_CATEGORIES)[number];
 const categoryCriteria: Record<SubstantiveIssueCategory, string> = {
   "Housing / moving":
     "Does the request say housing, a landlord, eviction, homelessness, relocation, or moving contributes to needing surrender or assistance?",
-  "Behavior / energy / lack of time":
+  "Behavior / time":
     "Does the request say animal behavior, the animal's energy level, or insufficient caregiver time contributes to needing surrender or assistance?",
   "Financial hardship":
     "Does the request say financial hardship or inability to afford costs contributes to needing surrender or assistance?",
-  "Caregiver health / unavailable":
+  "Caregiver unavailable":
     "Does a caregiver's hospitalization, physical or mental health, treatment, disability, incarceration, death, or other unavailability contribute to needing surrender or assistance?",
-  "Pregnancy / new baby / family change":
+  "Family change":
     "Does pregnancy, a new baby, divorce, deployment, or another family change contribute to needing surrender or assistance?",
   "Too many animals":
     "Does the request say the number of animals, uncontrolled breeding, or accumulation of animals contributes to needing surrender or assistance?",
   "Animal medical":
     "Does the request describe an injury, illness, disability, pain, or other medical issue affecting the animal?",
-  "Recent human bite / injury":
+  "Human bite / injury":
     "Does the request report that the animal being surrendered recently bit or physically injured a person?",
-  "Serious animal injury / death":
+  "Animal injury / death":
     "Does the request report that the animal being surrendered seriously injured or killed another animal?",
-  "Child or vulnerable-person safety":
+  "Child or vulnerable":
     "Does the request describe aggression, threatening behavior, or another safety concern involving a child or vulnerable person?",
-  "Cannot safely contain or separate":
+  "Cannot contain/separate":
     "Does the request say the animal cannot currently be safely contained, controlled, or separated from people or other animals?",
   "Acute animal suffering":
     "Does the request describe the animal as currently experiencing severe pain, distress, a serious untreated injury, or an apparent medical emergency?",
-  "No safe caregiver or placement":
+  "No safe placement":
     "Does the request say the animal currently has no safe place to stay or no capable person who can provide necessary care?",
-  "Household safety / domestic violence":
+  "Household safety":
     "Does the request disclose domestic violence, abuse, threats, or another household safety crisis contributing to needing surrender or assistance?",
-  "Abandonment / basic-care risk":
+  "Abandonment / care":
     "Does the request say the animal is abandoned, is at risk of abandonment, or currently lacks food, water, shelter, or other basic care?",
-  "Humane euthanasia / end-of-life request":
+  "Humane euthanasia":
     "Does the requester explicitly ask about humane euthanasia or end-of-life services for the animal?",
 };
 

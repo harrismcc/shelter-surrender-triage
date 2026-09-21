@@ -7,6 +7,7 @@ import {
   isMatchingSubmission,
   mergeOutlookCategories,
   outlookImportance,
+  PRIORITIES,
   SUBSTANTIVE_ISSUE_CATEGORIES,
 } from "./domain";
 
@@ -70,12 +71,18 @@ describe("classification mapping", () => {
     );
   });
 
+  it("keeps every inbox label within Outlook's 23-character display limit", () => {
+    for (const label of [...PRIORITIES, ...ISSUE_CATEGORIES]) {
+      expect(label.length).toBeLessThanOrEqual(23);
+    }
+  });
+
   it("includes multiple labels and includes the exact 0.5 boundary", () => {
     const classification = classificationFromAnswers(
       "P2 — Urgent",
       scores({
         "Housing / moving": 0.5,
-        "Household safety / domestic violence": 0.91,
+        "Household safety": 0.91,
         "Financial hardship": 0.499,
         "Other / unclear": 0.99,
       }),
@@ -85,7 +92,7 @@ describe("classification mapping", () => {
       priority: "P2 — Urgent",
       categories: [
         "Housing / moving",
-        "Household safety / domestic violence",
+        "Household safety",
       ],
     });
   });
@@ -113,6 +120,7 @@ describe("classification mapping", () => {
           " p1 — immediate ",
           "BEHAVIOR",
           "P4 — Lower urgency",
+          "Household safety / domestic violence",
           "Staff follow-up",
         ],
         {

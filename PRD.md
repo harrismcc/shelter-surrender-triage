@@ -159,25 +159,25 @@ The system analyzes the information contained in the form submission and assigns
 The initial reason categories are:
 
 * Housing / moving
-* Behavior / energy / lack of time
+* Behavior / time
 * Financial hardship
-* Caregiver health / unavailable
-* Pregnancy / new baby / family change
+* Caregiver unavailable
+* Family change
 * Too many animals
 * Animal medical
 * Other / unclear
 
 The initial safety and welfare categories are:
 
-* Recent human bite / injury
-* Serious animal injury / death
-* Child or vulnerable-person safety
-* Cannot safely contain or separate
+* Human bite / injury
+* Animal injury / death
+* Child or vulnerable
+* Cannot contain/separate
 * Acute animal suffering
-* No safe caregiver or placement
-* Household safety / domestic violence
-* Abandonment / basic-care risk
-* Humane euthanasia / end-of-life request
+* No safe placement
+* Household safety
+* Abandonment / care
+* Humane euthanasia
 
 The taxonomy should be refined with shelter staff before production use.
 
@@ -337,9 +337,9 @@ and:
 
 * Animal medical
 * Housing / moving
-* Behavior / energy / lack of time
-* Recent human bite / injury
-* Household safety / domestic violence
+* Behavior / time
+* Human bite / injury
+* Household safety
 
 The system should organize surrender requests without requiring shelter employees to manually maintain email rules.
 
@@ -356,7 +356,7 @@ Example:
 Owner is entering the hospital and reports being unable to care for Luna. No immediate injury or unsafe behavior is described.
 
 **Categories**
-Caregiver health / unavailable
+Caregiver unavailable
 
 **Key signals**
 Caregiver hospitalization

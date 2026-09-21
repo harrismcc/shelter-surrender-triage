@@ -3,6 +3,27 @@
   "name": "shelter-surrender-triage",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-21",
+  "triggers": {
+    "crons": ["*/10 * * * *"]
+  },
+  "queues": {
+    "producers": [
+      {
+        "binding": "TRIAGE_QUEUE",
+        "queue": "shelter-surrender-triage"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "shelter-surrender-triage",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_concurrency": 1,
+        "max_retries": 5,
+        "retry_delay": 60
+      }
+    ]
+  },
   "observability": {
     "enabled": true
   }

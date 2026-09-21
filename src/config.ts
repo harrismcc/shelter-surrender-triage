@@ -14,6 +14,7 @@ export interface WorkerEnv {
   TYPESAFE_MODEL?: string;
   RECONCILIATION_LOOKBACK_MINUTES?: string;
   RECONCILIATION_MAX_MESSAGES?: string;
+  SENTRY_RELEASE?: string;
   TRIAGE_QUEUE: Queue<TriageQueueMessage>;
 }
 

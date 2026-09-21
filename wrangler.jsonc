@@ -4,6 +4,8 @@
   "account_id": "9653721a2b134dd0f41d6994ec0376c2",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "upload_source_maps": true,
   "vars": {
     "MICROSOFT_AUTH_MODE": "delegated",
     "MICROSOFT_TENANT_ID": "consumers",

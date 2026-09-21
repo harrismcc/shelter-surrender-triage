@@ -8,7 +8,9 @@
     "start": "wrangler dev",
     "dev": "wrangler dev --ip 0.0.0.0",
     "build": "wrangler deploy --dry-run --outdir dist",
-    "deploy": "wrangler deploy",
+    "deploy": "wrangler deploy --outdir dist --upload-source-maps --var SENTRY_RELEASE:$(sentry-cli releases propose-version)",
+    "postdeploy": "bun run sentry:sourcemaps",
+    "sentry:sourcemaps": "_SENTRY_RELEASE=$(sentry-cli releases propose-version) && sentry-cli releases new $_SENTRY_RELEASE --org=harris-53 --project=shelter-surrender-triage && sentry-cli sourcemaps upload --org=harris-53 --project=shelter-surrender-triage --release=$_SENTRY_RELEASE --strip-prefix 'dist/..' dist",
     "cf-typegen": "wrangler types --include-env=false",
     "typecheck": "wrangler types --check --include-env=false && tsc --noEmit",
     "test": "bun test",
@@ -17,11 +19,13 @@
     "send-test-email": "bun --env-file=.dev.vars scripts/send-test-email.ts"
   },
   "devDependencies": {
+    "@sentry/cli": "^3.8.0",
     "@types/bun": "latest",
     "typescript": "^5.9.3",
     "wrangler": "^4.136.1"
   },
   "dependencies": {
+    "@sentry/cloudflare": "^10.75.1",
     "@typesafe-ai/sdk": "^0.6.0"
   }
 }

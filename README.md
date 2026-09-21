@@ -53,6 +53,7 @@ Configure these Worker variables:
 | `TYPESAFE_MODEL` | TypeSafe model | `jev-1.13.0` |
 | `RECONCILIATION_LOOKBACK_MINUTES` | Recent Inbox recovery window | `180` |
 | `RECONCILIATION_MAX_MESSAGES` | Maximum messages scanned per scheduled run | `250` |
+| `SENTRY_RELEASE` | Release identifier injected automatically by the deploy script | deployment Git revision |
 
 Store these values as encrypted Worker secrets, never plain variables or repository files:
 
@@ -123,5 +124,8 @@ bun run build
 To deploy after authenticating Wrangler with Cloudflare:
 
 ```bash
+export SENTRY_AUTH_TOKEN=sntrys_YOUR_TOKEN_HERE
 bun run deploy
 ```
+
+Production deploys generate source maps and upload them to the `harris-53/shelter-surrender-triage` Sentry project. Store `SENTRY_AUTH_TOKEN` as a secret in the deployment environment; do not commit it. Development builds do not upload source maps.

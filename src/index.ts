@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/cloudflare";
+
 import { JevClassifier } from "./classifier";
 import { readConfig, type TriageQueueMessage, type WorkerEnv } from "./config";
 import { GraphClient } from "./graph";
@@ -72,4 +74,10 @@ const worker = {
   },
 } satisfies ExportedHandler<WorkerEnv, TriageQueueMessage>;
 
-export default worker;
+export default Sentry.withSentry<WorkerEnv, TriageQueueMessage, unknown, typeof worker>(
+  (env: WorkerEnv) => ({
+    dsn: "https://d14b476de6348e93325eeb9a32f06645@o4511972984160256.ingest.us.sentry.io/4512126431461376",
+    release: env?.SENTRY_RELEASE,
+  }),
+  worker,
+);

@@ -26,7 +26,7 @@ Do not also grant the corresponding tenant-wide Microsoft Graph application perm
 
 ### Personal-mailbox development authorization
 
-For development without tenant administration, set `MICROSOFT_AUTH_MODE=delegated` and authorize a personal Microsoft mailbox using OAuth device authorization. The app registration must support personal Microsoft accounts, enable public client flows, and request delegated `Mail.ReadWrite`, `MailboxSettings.ReadWrite`, and `offline_access` permissions. Set `MICROSOFT_TENANT_ID=consumers` and store the resulting refresh token as `MICROSOFT_REFRESH_TOKEN`.
+For development without tenant administration, set `MICROSOFT_AUTH_MODE=delegated` and authorize a personal Microsoft mailbox using OAuth device authorization. The app registration must support personal Microsoft accounts, enable public client flows, and request delegated `Mail.ReadWrite`, `MailboxSettings.ReadWrite`, `Mail.Send`, and `offline_access` permissions. `Mail.Send` is used only by the local test-email command described below. Set `MICROSOFT_TENANT_ID=consumers` and store the resulting refresh token as `MICROSOFT_REFRESH_TOKEN`.
 
 Delegated mode uses the signed-in user's `/me` mailbox and exists only to exercise the integration against a real development Inbox. It does not validate production shared-mailbox authorization. Refresh tokens must be stored as local or Worker secrets and never committed.
 
@@ -90,6 +90,26 @@ bun run dev
 ```
 
 The Worker is available at `http://localhost:8787` by default. Its health endpoint is `GET /health`. Graph webhook delivery requires a public deployed URL; local development does not provision a production subscription.
+
+### Send a test email
+
+In delegated development mode, send an email from the signed-in test mailbox back to itself. The command takes the recipient and exact subject from `TRIAGE_EXACT_SENDER` and `TRIAGE_EXACT_SUBJECT`, so the deployed Worker recognizes the message. It refuses application mode to prevent test tooling from sending as the production shared mailbox.
+
+Authorize the development mailbox once. The command opens Microsoft's device-authorization flow and stores the resulting refresh token directly as an Amp project secret; it never prints the token:
+
+```bash
+bun run authorize-microsoft
+```
+
+Restart the orb processes so the new project secret enters the environment. Then provide any plain-text body:
+
+```bash
+bun run send-test-email --body 'My custom surrender request'
+bun run send-test-email --body-file ./request.txt
+bun run sample-email | bun run send-test-email
+```
+
+The authorization requests the delegated permissions listed above, including `Mail.Send`. Run it again if access is revoked or expires.
 
 To generate Cloudflare types, verify the project, or build a deployment bundle:
 

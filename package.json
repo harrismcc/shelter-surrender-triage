@@ -12,7 +12,9 @@
     "cf-typegen": "wrangler types --include-env=false",
     "typecheck": "wrangler types --check --include-env=false && tsc --noEmit",
     "test": "bun test",
-    "sample-email": "bun run evals/random-email-body.ts"
+    "sample-email": "bun run evals/random-email-body.ts",
+    "authorize-microsoft": "bun scripts/authorize-microsoft.ts",
+    "send-test-email": "bun --env-file=.dev.vars scripts/send-test-email.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

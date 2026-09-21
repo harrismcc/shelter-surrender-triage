@@ -60,11 +60,11 @@ describe("runtime provisioning decisions", () => {
   it("creates only missing categories", () => {
     const missing = missingMasterCategories([
       { displayName: "P1 — Immediate" },
-      { displayName: "housing / landlord / moving" },
+      { displayName: "housing / moving" },
     ]);
 
     expect(missing.some((category) => category.displayName === "P1 — Immediate")).toBe(false);
-    expect(missing.some((category) => category.displayName === "Housing / landlord / moving")).toBe(false);
+    expect(missing.some((category) => category.displayName === "Housing / moving")).toBe(false);
     expect(missing.find((category) => category.displayName === "P2 — Urgent")?.color).toBe("preset1");
   });
 

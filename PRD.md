@@ -156,26 +156,28 @@ From the staff perspective, surrender requests should be visually separated from
 
 The system analyzes the information contained in the form submission and assigns one or more categories.
 
-Initial candidate categories include:
+The initial reason categories are:
 
-* Housing / landlord / moving
+* Housing / moving
+* Behavior / energy / lack of time
 * Financial hardship
-* Animal medical issue
-* Owner medical issue
-* Behavior
-* Bite / aggression / safety
-* Animal-to-animal conflict
-* Unable to care for animal
-* Too many animals / possible hoarding
-* Lack of time
-* Family or life change
-* Rehoming assistance
-* Temporary foster / boarding need
-* Veterinary assistance
-* Food / supply assistance
-* Behavior assistance
-* Humane euthanasia request
+* Caregiver health / unavailable
+* Pregnancy / new baby / family change
+* Too many animals
+* Animal medical
 * Other / unclear
+
+The initial safety and welfare categories are:
+
+* Recent human bite / injury
+* Serious animal injury / death
+* Child or vulnerable-person safety
+* Cannot safely contain or separate
+* Acute animal suffering
+* No safe caregiver or placement
+* Household safety / domestic violence
+* Abandonment / basic-care risk
+* Humane euthanasia / end-of-life request
 
 The taxonomy should be refined with shelter staff before production use.
 
@@ -183,7 +185,7 @@ A case may belong to multiple categories.
 
 Example:
 
-**Housing + Temporary Foster Opportunity**
+**Housing / moving + Financial hardship**
 
 rather than forcing the case into only one category.
 
@@ -212,14 +214,12 @@ Potential signals include:
 * Owner cannot access necessary veterinary care
 * Medical circumstances associated with a euthanasia request
 
-### Time pressure
+### Current care
 
-* Owner needs placement today
-* Owner needs placement within 24–72 hours
-* Imminent eviction
-* Imminent homelessness
-* Owner entering hospital, treatment, incarceration, etc.
 * Animal currently has nowhere safe to stay
+* No capable caregiver is available
+* Animal cannot safely be contained or separated
+* Animal lacks food, water, shelter, or other basic care
 
 ### Welfare
 
@@ -251,31 +251,32 @@ The initial product concept is:
 
 ### P1 — Immediate
 
-Potential emergency or serious safety/welfare concern requiring rapid review.
+Potential emergency or serious safety or welfare concern requiring immediate staff review.
 
 Illustrative examples:
 
-* Acute medical suffering
-* Serious recent bite or immediate human-safety issue
-* Animal currently in a dangerous situation
+* Recent human bite or physical injury caused by the animal
+* Serious injury or death to another animal
+* Acute animal suffering
+* Immediate danger or inability to safely contain or separate the animal
+* Animal currently without safe placement, a capable caregiver, or basic care
 
 ### P2 — Urgent
 
-Significant time-sensitive situation requiring prompt attention.
+Serious household, caregiver, or safety circumstance requiring urgent staff review without meeting P1.
 
 Illustrative examples:
 
-* Owner loses housing tomorrow
-* Animal has no safe placement after a near-term deadline
-* Rapidly escalating care or behavioral issue
+* Domestic violence or another household safety crisis
+* Caregiver hospitalization or unavailability
+* Aggression or a safety concern involving a child or vulnerable person
+* Humane euthanasia or end-of-life request without acute suffering
 
 ### P3 — Standard
 
-Legitimate surrender or assistance request without an identified immediate deadline or emergency.
+Routine surrender or assistance circumstances without a P1 or P2 signal, such as moving, pregnancy or a new baby, financial hardship, behavior, energy, lack of time, too many animals, or a non-acute animal medical issue.
 
-### P4 — Lower urgency
-
-Request can reasonably remain in the normal queue without evidence of immediate risk or deadline.
+The system assigns only the priority band. Shelter staff policy determines the response deadline and handling procedure for each band.
 
 These examples are product hypotheses rather than shelter policy.
 
@@ -293,9 +294,8 @@ Example:
 
 Reasons:
 
-* Housing deadline within 48 hours
-* Owner reports no alternative placement
-* Temporary foster may prevent surrender
+* Caregiver hospitalization
+* No alternate caregiver identified
 
 A staff member should be able to understand the prioritization without understanding how the underlying AI works.
 
@@ -307,17 +307,13 @@ The product should allow staff to work through surrender requests in priority or
 
 The desired experience is conceptually:
 
-| Priority | Request | Category | Key signal                   |
-| -------- | ------- | -------- | ---------------------------- |
-| P1       | Max     | Medical  | Acute injury                 |
-| P1       | Buddy   | Safety   | Recent bite                  |
-| P2       | Luna    | Housing  | Placement needed in 48h      |
-| P2       | Charlie | Behavior | Escalating household concern |
-| P3       | Daisy   | Rehoming | No immediate deadline        |
-
-Within a priority band, the product may use an internal score to determine ordering.
-
-Staff do not necessarily need to see the raw numerical score.
+| Priority | Request | Category              | Key signal                   |
+| -------- | ------- | --------------------- | ---------------------------- |
+| P1       | Max     | Medical               | Acute injury                 |
+| P1       | Buddy   | Safety                | Recent bite                  |
+| P2       | Luna    | Caregiver unavailable | Owner entering hospital      |
+| P2       | Charlie | Behavior              | Escalating household concern |
+| P3       | Daisy   | Housing               | Moving                       |
 
 
 
@@ -336,17 +332,14 @@ Example labels:
 * P1 — Immediate
 * P2 — Urgent
 * P3 — Standard
-* P4 — Low
 
 and:
 
-* Medical
-* Housing
-* Behavior
-* Bite/Safety
-* Financial
-* Temporary Foster
-* Retention Opportunity
+* Animal medical
+* Housing / moving
+* Behavior / energy / lack of time
+* Recent human bite / injury
+* Household safety / domestic violence
 
 The system should organize surrender requests without requiring shelter employees to manually maintain email rules.
 
@@ -360,22 +353,13 @@ Example:
 
 **Luna — P2 Urgent**
 
-Owner must leave current housing Friday. Temporary housing does not allow pets. Owner expects permanent pet-friendly housing within approximately three weeks.
+Owner is entering the hospital and reports being unable to care for Luna. No immediate injury or unsafe behavior is described.
 
 **Categories**
-Housing, Temporary Foster
+Caregiver health / unavailable
 
 **Key signals**
-Housing deadline within 72 hours
-
-**Potential retention opportunity**
-Temporary foster or boarding may prevent surrender.
-
-**Safety**
-No recent bite reported.
-
-**Medical**
-No urgent medical issue identified.
+Caregiver hospitalization
 
 The original submission must remain available so staff can verify the system's interpretation.
 
@@ -597,24 +581,14 @@ Where possible, prioritization should be grounded in understandable circumstance
 
 * Recent bite
 * Acute medical concern
-* Housing deadline
+* Household safety crisis
 * Animal without safe placement
 
 rather than an opaque AI-generated judgment.
 
 ## Handle uncertainty explicitly
 
-If the system cannot confidently determine something, it should say so.
-
-For example:
-
-**Recent bite: Unknown**
-
-is preferable to inferring:
-
-**Recent bite: No**
-
-because none was mentioned.
+The absence of a tag means only that the category did not meet the classification threshold. It must not be presented as an affirmative finding that the circumstance did not occur.
 
 ## Preserve source material
 
@@ -623,8 +597,6 @@ Staff must always be able to review the original submission.
 ## Avoid false precision
 
 Priority bands and reasons are more valuable to staff than presenting a seemingly scientific score such as `87.3`.
-
-An internal score may still be useful for ordering.
 
 
 
@@ -739,4 +711,3 @@ The MVP is successful if:
 The MVP does **not** need to automate the shelter.
 
 It needs to make the surrender queue significantly easier to understand and work through.
-

@@ -3,66 +3,62 @@ import { choice, noul, TypeSafeClient } from "@typesafe-ai/sdk";
 import {
   categoriesAtThreshold,
   type Classification,
-  ISSUE_CATEGORIES,
   type IssueCategory,
   type Priority,
+  SUBSTANTIVE_ISSUE_CATEGORIES,
 } from "./domain";
 
 const priorityQuestion = choice(
-  "Select exactly one staff-review priority for this animal surrender or assistance request. Judge only the supplied message subject and body.",
+  "Select the highest applicable staff-review priority for this animal surrender or assistance request. Judge only the supplied message subject and body. Do not infer or assign staff response times.",
   {
     "P1 — Immediate":
-      "Potential emergency or serious safety or welfare concern requiring rapid review: acute medical suffering, a serious recent bite or immediate human-safety issue, or an animal currently in a dangerous situation.",
+      "The request reports a recent human bite or physical injury caused by the animal; serious injury or death to another animal; acute animal suffering; an immediate credible threat to a person or animal; inability to safely contain or separate the animal; or an animal currently without safe placement, a capable caregiver, or basic care.",
     "P2 — Urgent":
-      "Significant time-sensitive situation requiring prompt attention: housing loss tomorrow, no safe placement after a near-term deadline, or a rapidly escalating care or behavioral issue, without meeting P1.",
+      "The request reports domestic violence or another household safety crisis, caregiver hospitalization or unavailability, aggression or a safety concern involving a child or vulnerable person, or a humane euthanasia or end-of-life request, without meeting P1.",
     "P3 — Standard":
-      "A legitimate surrender or assistance request without an identified immediate deadline or emergency.",
-    "P4 — Lower urgency":
-      "The request can reasonably remain in the normal queue because it contains no evidence of immediate risk, meaningful time pressure, or a near-term deadline.",
+      "The request concerns moving or housing, pregnancy or a new baby, financial hardship, behavior, energy, lack of time, too many animals, a non-acute animal medical issue, or another routine life change, without meeting P1 or P2.",
   },
 );
 
-const categoryCriteria: Record<IssueCategory, string> = {
-  "Housing / landlord / moving":
+type SubstantiveIssueCategory = (typeof SUBSTANTIVE_ISSUE_CATEGORIES)[number];
+
+const categoryCriteria: Record<SubstantiveIssueCategory, string> = {
+  "Housing / moving":
     "Does the request say housing, a landlord, eviction, homelessness, relocation, or moving contributes to needing surrender or assistance?",
+  "Behavior / energy / lack of time":
+    "Does the request say animal behavior, the animal's energy level, or insufficient caregiver time contributes to needing surrender or assistance?",
   "Financial hardship":
     "Does the request say financial hardship or inability to afford costs contributes to needing surrender or assistance?",
-  "Animal medical issue":
-    "Does the request describe an injury, illness, disability, suffering, or other medical issue affecting the animal?",
-  "Owner medical issue":
-    "Does the request say the owner's physical health, mental health, hospitalization, treatment, disability, or death contributes to needing surrender or assistance?",
-  Behavior:
-    "Does the request describe problematic animal behavior, excluding facts stated only as animal-to-animal conflict or a bite, aggression, or immediate safety issue?",
-  "Bite / aggression / safety":
-    "Does the request describe a bite, aggression, threat, containment failure, or safety risk involving this animal?",
-  "Animal-to-animal conflict":
-    "Does the request describe conflict, fighting, incompatibility, or safety problems between this animal and another animal?",
-  "Unable to care for animal":
-    "Does the request state that the owner or current caretaker cannot provide necessary ongoing care for the animal?",
-  "Too many animals / possible hoarding":
-    "Does the request describe an excessive number of animals, uncontrolled accumulation or breeding, or circumstances suggesting possible hoarding?",
-  "Lack of time":
-    "Does the request say insufficient time for the animal or its care contributes to needing surrender or assistance?",
-  "Family or life change":
-    "Does the request say a family or life change such as divorce, pregnancy, a new child, deployment, incarceration, or a death contributes to needing surrender or assistance?",
-  "Rehoming assistance":
-    "Is the requester specifically seeking help to find the animal a new home outside a direct shelter surrender?",
-  "Temporary foster / boarding need":
-    "Does the requester need temporary foster care or boarding, or indicate temporary placement could let them keep the animal?",
-  "Veterinary assistance":
-    "Is the requester seeking veterinary services or financial help for veterinary care as an alternative to surrender?",
-  "Food / supply assistance":
-    "Is the requester seeking food, litter, equipment, or other pet supplies as help that could prevent surrender?",
-  "Behavior assistance":
-    "Is the requester seeking training, behavior consultation, or other behavior support as help that could prevent surrender?",
-  "Humane euthanasia request":
+  "Caregiver health / unavailable":
+    "Does a caregiver's hospitalization, physical or mental health, treatment, disability, incarceration, death, or other unavailability contribute to needing surrender or assistance?",
+  "Pregnancy / new baby / family change":
+    "Does pregnancy, a new baby, divorce, deployment, or another family change contribute to needing surrender or assistance?",
+  "Too many animals":
+    "Does the request say the number of animals, uncontrolled breeding, or accumulation of animals contributes to needing surrender or assistance?",
+  "Animal medical":
+    "Does the request describe an injury, illness, disability, pain, or other medical issue affecting the animal?",
+  "Recent human bite / injury":
+    "Does the request report that the animal being surrendered recently bit or physically injured a person?",
+  "Serious animal injury / death":
+    "Does the request report that the animal being surrendered seriously injured or killed another animal?",
+  "Child or vulnerable-person safety":
+    "Does the request describe aggression, threatening behavior, or another safety concern involving a child or vulnerable person?",
+  "Cannot safely contain or separate":
+    "Does the request say the animal cannot currently be safely contained, controlled, or separated from people or other animals?",
+  "Acute animal suffering":
+    "Does the request describe the animal as currently experiencing severe pain, distress, a serious untreated injury, or an apparent medical emergency?",
+  "No safe caregiver or placement":
+    "Does the request say the animal currently has no safe place to stay or no capable person who can provide necessary care?",
+  "Household safety / domestic violence":
+    "Does the request disclose domestic violence, abuse, threats, or another household safety crisis contributing to needing surrender or assistance?",
+  "Abandonment / basic-care risk":
+    "Does the request say the animal is abandoned, is at risk of abandonment, or currently lacks food, water, shelter, or other basic care?",
+  "Humane euthanasia / end-of-life request":
     "Does the requester explicitly ask about humane euthanasia or end-of-life services for the animal?",
-  "Other / unclear":
-    "Does the request fail to clearly match any of the other listed surrender or assistance issue categories?",
 };
 
 const categoryQuestions = Object.fromEntries(
-  ISSUE_CATEGORIES.map((category, index) => [
+  SUBSTANTIVE_ISSUE_CATEGORIES.map((category, index) => [
     `category_${index}`,
     noul(categoryCriteria[category], {
       true: `The message itself provides evidence for ${category}.`,
@@ -88,7 +84,6 @@ export function classificationFromAnswers(
     "P1 — Immediate",
     "P2 — Urgent",
     "P3 — Standard",
-    "P4 — Lower urgency",
   ].includes(priority)) {
     throw new Error("TypeSafe returned an invalid priority");
   }
@@ -122,15 +117,16 @@ export class JevClassifier implements Classifier {
       string,
       { readonly type: string; readonly noul?: number }
     >;
-    const scores = Object.fromEntries(
-      ISSUE_CATEGORIES.map((category, index) => {
+    const scores = Object.fromEntries([
+      ...SUBSTANTIVE_ISSUE_CATEGORIES.map((category, index) => {
         const answer = answers[`category_${index}`];
         if (!answer || answer.type !== "noul" || typeof answer.noul !== "number") {
           throw new Error(`TypeSafe returned an invalid answer for category_${index}`);
         }
         return [category, answer.noul];
       }),
-    ) as Record<IssueCategory, number>;
+      ["Other / unclear", 0],
+    ]) as Record<IssueCategory, number>;
 
     return classificationFromAnswers(result.answers.priority.choice, scores);
   }

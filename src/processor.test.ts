@@ -58,7 +58,7 @@ function dependencies(options: {
       operations.push("classify");
       return {
         priority: "P2 — Urgent",
-        categories: ["Housing / landlord / moving", "Temporary foster / boarding need"],
+        categories: ["Housing / moving", "Household safety / domestic violence"],
       };
     },
   };
@@ -74,8 +74,8 @@ describe("message processing", () => {
     expect(updated).toEqual([[
       "Owned by intake",
       "P2 — Urgent",
-      "Housing / landlord / moving",
-      "Temporary foster / boarding need",
+      "Housing / moving",
+      "Household safety / domestic violence",
     ]]);
   });
 

@@ -11,7 +11,8 @@
     "deploy": "wrangler deploy",
     "cf-typegen": "wrangler types --include-env=false",
     "typecheck": "wrangler types --check --include-env=false && tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "sample-email": "bun run evals/random-email-body.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

@@ -1,0 +1,10 @@
+services:
+  worker:
+    command: bun run dev -- --port "$PORT"
+    health: /health
+    review: false
+    agent: control
+    portal:
+      url: /
+      title: Shelter Surrender Triage Worker
+      description: Local Cloudflare Worker development server.

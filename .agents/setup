@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly BUN_VERSION="1.3.10"
+readonly REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+activate_local_bun() {
+  export BUN_INSTALL="$HOME/.bun"
+  export PATH="$BUN_INSTALL/bin:$PATH"
+
+  local profile_marker="# shelter-surrender-triage Bun"
+  if ! grep -Fqx "$profile_marker" "$HOME/.bash_profile" 2>/dev/null; then
+    cat >> "$HOME/.bash_profile" <<'EOF'
+
+# shelter-surrender-triage Bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+EOF
+  fi
+}
+
+ensure_bun() {
+  if command -v bun >/dev/null && [[ "$(bun --version)" == "$BUN_VERSION" ]]; then
+    return
+  fi
+
+  if [[ -x "$HOME/.bun/bin/bun" ]] && [[ "$("$HOME/.bun/bin/bun" --version)" == "$BUN_VERSION" ]]; then
+    activate_local_bun
+    return
+  fi
+
+  if ! command -v unzip >/dev/null; then
+    echo "Installing unzip..."
+    sudo apt-get update
+    sudo apt-get install -y unzip
+  fi
+
+  echo "Installing Bun ${BUN_VERSION}..."
+  curl -fsSL https://bun.com/install | bash -s "bun-v${BUN_VERSION}"
+  activate_local_bun
+}
+
+cd "$REPO_ROOT"
+
+ensure_bun
+
+echo "Installing project dependencies..."
+time bun install --frozen-lockfile
+
+echo "Type-checking project..."
+time bun run typecheck
+
+echo "Orb setup complete."

@@ -1,8 +1,17 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "shelter-surrender-triage",
+  "account_id": "9653721a2b134dd0f41d6994ec0376c2",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-21",
+  "vars": {
+    "MICROSOFT_AUTH_MODE": "delegated",
+    "MICROSOFT_TENANT_ID": "consumers",
+    "MICROSOFT_CLIENT_ID": "74b7355a-47ac-4c05-bf02-34b9f689f59d",
+    "TRIAGE_EXACT_SENDER": "harrismccullers@outlook.com",
+    "TRIAGE_EXACT_SUBJECT": "Pet Surrender Request",
+    "PUBLIC_BASE_URL": "https://shelter-surrender-triage.harrismcc.workers.dev"
+  },
   "triggers": {
     "crons": ["*/10 * * * *"]
   },

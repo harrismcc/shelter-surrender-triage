@@ -9,8 +9,8 @@
     "dev": "wrangler dev --ip 0.0.0.0",
     "build": "wrangler deploy --dry-run --outdir dist",
     "deploy": "wrangler deploy",
-    "cf-typegen": "wrangler types",
-    "typecheck": "wrangler types --check && tsc --noEmit",
+    "cf-typegen": "wrangler types --include-env=false",
+    "typecheck": "wrangler types --check --include-env=false && tsc --noEmit",
     "test": "bun test"
   },
   "devDependencies": {

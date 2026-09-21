@@ -13,12 +13,20 @@ The Inbox/folder location is the processing state. A failed Graph or Jev request
 
 ## Microsoft and Cloudflare prerequisites
 
-Create a single-tenant Microsoft Entra application using client-credential authentication. Grant these **application** permissions and admin consent:
+### Production shared-mailbox authorization
 
-- `Mail.ReadWrite`
-- `MailboxSettings.ReadWrite`
+Create a single-tenant Microsoft Entra application using client-credential authentication. For least-privilege access, assign these Exchange Online **Application RBAC** roles with a resource scope restricted to the shared mailbox:
 
-Scope the application to the shared mailbox with an Exchange Online application access policy or Application RBAC where available. `OUTLOOK_SHARED_MAILBOX` may be the shared mailbox's object ID or SMTP address.
+- `Application Mail.ReadWrite`
+- `Application MailboxSettings.ReadWrite`
+
+Do not also grant the corresponding tenant-wide Microsoft Graph application permissions in Entra. Entra grants and Exchange Application RBAC assignments are additive, so an unscoped Entra grant would defeat the mailbox restriction. `OUTLOOK_SHARED_MAILBOX` may be the shared mailbox's object ID or SMTP address.
+
+### Personal-mailbox development authorization
+
+For development without tenant administration, set `MICROSOFT_AUTH_MODE=delegated` and authorize a personal Microsoft mailbox using OAuth device authorization. The app registration must support personal Microsoft accounts, enable public client flows, and request delegated `Mail.ReadWrite`, `MailboxSettings.ReadWrite`, and `offline_access` permissions. Set `MICROSOFT_TENANT_ID=consumers` and store the resulting refresh token as `MICROSOFT_REFRESH_TOKEN`.
+
+Delegated mode uses the signed-in user's `/me` mailbox and exists only to exercise the integration against a real development Inbox. It does not validate production shared-mailbox authorization. Refresh tokens must be stored as local or Worker secrets and never committed.
 
 Create the Queue before deployment:
 
@@ -32,9 +40,10 @@ Configure these Worker variables:
 
 | Name | Purpose | Default |
 | --- | --- | --- |
-| `MICROSOFT_TENANT_ID` | Microsoft tenant ID | required |
+| `MICROSOFT_AUTH_MODE` | `application` for production or `delegated` for personal-mailbox development | `application` |
+| `MICROSOFT_TENANT_ID` | Microsoft tenant ID, or `consumers` for delegated personal accounts | required |
 | `MICROSOFT_CLIENT_ID` | Entra application/client ID | required |
-| `OUTLOOK_SHARED_MAILBOX` | Shared mailbox object ID or SMTP address | required |
+| `OUTLOOK_SHARED_MAILBOX` | Shared mailbox object ID or SMTP address | application mode only |
 | `TRIAGE_EXACT_SENDER` | Exact form sender address | required |
 | `TRIAGE_EXACT_SUBJECT` | Exact form message subject | required |
 | `SURRENDER_FOLDER_NAME` | Destination Outlook folder | `Surrender Requests` |
@@ -47,7 +56,8 @@ Store these values as encrypted Worker secrets, never plain variables or reposit
 
 | Name | Purpose |
 | --- | --- |
-| `MICROSOFT_CLIENT_SECRET` | Entra application credential |
+| `MICROSOFT_CLIENT_SECRET` | Entra application credential; application mode only |
+| `MICROSOFT_REFRESH_TOKEN` | Personal-account OAuth refresh token; delegated mode only |
 | `GRAPH_WEBHOOK_CLIENT_STATE` | Shared secret used to authenticate Graph notification payloads |
 | `TYPESAFE_API_KEY` | TypeSafe API credential |
 
@@ -56,6 +66,8 @@ npx wrangler secret put MICROSOFT_CLIENT_SECRET
 npx wrangler secret put GRAPH_WEBHOOK_CLIENT_STATE
 npx wrangler secret put TYPESAFE_API_KEY
 ```
+
+For a delegated development deployment, set `MICROSOFT_REFRESH_TOKEN` instead of `MICROSOFT_CLIENT_SECRET`.
 
 `GRAPH_WEBHOOK_CLIENT_STATE` should be a generated high-entropy value. The Graph client secret and TypeSafe key are issued by their respective services. The application pins `jev-1.13.0` by default rather than following a moving model alias.
 

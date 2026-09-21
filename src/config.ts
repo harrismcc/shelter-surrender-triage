@@ -1,8 +1,10 @@
 export interface WorkerEnv {
+  MICROSOFT_AUTH_MODE?: string;
   MICROSOFT_TENANT_ID: string;
   MICROSOFT_CLIENT_ID: string;
-  MICROSOFT_CLIENT_SECRET: string;
-  OUTLOOK_SHARED_MAILBOX: string;
+  MICROSOFT_CLIENT_SECRET?: string;
+  MICROSOFT_REFRESH_TOKEN?: string;
+  OUTLOOK_SHARED_MAILBOX?: string;
   TRIAGE_EXACT_SENDER: string;
   TRIAGE_EXACT_SUBJECT: string;
   SURRENDER_FOLDER_NAME?: string;
@@ -29,11 +31,15 @@ export interface LifecycleQueueJob {
 
 export type TriageQueueMessage = MessageQueueJob | LifecycleQueueJob;
 
+export type MicrosoftAuthMode = "application" | "delegated";
+
 export interface Config {
+  microsoftAuthMode: MicrosoftAuthMode;
   microsoftTenantId: string;
   microsoftClientId: string;
-  microsoftClientSecret: string;
-  mailbox: string;
+  microsoftClientSecret?: string;
+  microsoftRefreshToken?: string;
+  mailbox?: string;
   exactSender: string;
   exactSubject: string;
   destinationFolderName: string;
@@ -64,11 +70,26 @@ function positiveInteger(value: string | undefined, fallback: number, name: stri
 
 export function readConfig(env: WorkerEnv): Config {
   const publicBaseUrl = required(env, "PUBLIC_BASE_URL").replace(/\/+$/, "");
+  const microsoftAuthMode = env.MICROSOFT_AUTH_MODE?.trim() || "application";
+  if (microsoftAuthMode !== "application" && microsoftAuthMode !== "delegated") {
+    throw new Error("MICROSOFT_AUTH_MODE must be application or delegated");
+  }
   return {
+    microsoftAuthMode,
     microsoftTenantId: required(env, "MICROSOFT_TENANT_ID"),
     microsoftClientId: required(env, "MICROSOFT_CLIENT_ID"),
-    microsoftClientSecret: required(env, "MICROSOFT_CLIENT_SECRET"),
-    mailbox: required(env, "OUTLOOK_SHARED_MAILBOX"),
+    microsoftClientSecret:
+      microsoftAuthMode === "application"
+        ? required(env, "MICROSOFT_CLIENT_SECRET")
+        : undefined,
+    microsoftRefreshToken:
+      microsoftAuthMode === "delegated"
+        ? required(env, "MICROSOFT_REFRESH_TOKEN")
+        : undefined,
+    mailbox:
+      microsoftAuthMode === "application"
+        ? required(env, "OUTLOOK_SHARED_MAILBOX")
+        : undefined,
     exactSender: required(env, "TRIAGE_EXACT_SENDER"),
     exactSubject: required(env, "TRIAGE_EXACT_SUBJECT"),
     destinationFolderName: env.SURRENDER_FOLDER_NAME?.trim() || "Surrender Requests",

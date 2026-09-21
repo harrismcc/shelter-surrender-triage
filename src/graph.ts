@@ -75,13 +75,22 @@ export interface ProvisioningGraphOperations {
 
 export class GraphClient implements GraphOperations {
   private accessToken?: { value: string; expiresAt: number };
+  private refreshToken?: string;
+  private readonly fetcher: (
+    input: Parameters<typeof fetch>[0],
+    init?: Parameters<typeof fetch>[1],
+  ) => Promise<Response>;
   private readonly mailboxPath: string;
 
   constructor(
     private readonly config: Config,
-    private readonly fetcher: typeof fetch = fetch,
+    fetcher: typeof fetch = fetch,
   ) {
-    this.mailboxPath = `/users/${encodeURIComponent(config.mailbox)}`;
+    this.fetcher = (input, init) => fetcher(input, init);
+    this.mailboxPath = config.microsoftAuthMode === "delegated"
+      ? "/me"
+      : `/users/${encodeURIComponent(config.mailbox ?? "")}`;
+    this.refreshToken = config.microsoftRefreshToken;
   }
 
   private async token(): Promise<string> {
@@ -90,18 +99,27 @@ export class GraphClient implements GraphOperations {
     }
 
     const url = `https://login.microsoftonline.com/${encodeURIComponent(this.config.microsoftTenantId)}/oauth2/v2.0/token`;
+    const tokenBody = this.config.microsoftAuthMode === "delegated"
+      ? new URLSearchParams({
+          client_id: this.config.microsoftClientId,
+          refresh_token: this.refreshToken ?? "",
+          scope:
+            "offline_access https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/MailboxSettings.ReadWrite",
+          grant_type: "refresh_token",
+        })
+      : new URLSearchParams({
+          client_id: this.config.microsoftClientId,
+          client_secret: this.config.microsoftClientSecret ?? "",
+          scope: "https://graph.microsoft.com/.default",
+          grant_type: "client_credentials",
+        });
     for (let attempt = 0; attempt < 3; attempt += 1) {
       let response: Response;
       try {
         response = await this.fetcher(url, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            client_id: this.config.microsoftClientId,
-            client_secret: this.config.microsoftClientSecret,
-            scope: "https://graph.microsoft.com/.default",
-            grant_type: "client_credentials",
-          }),
+          body: tokenBody,
         });
       } catch {
         if (attempt === 2) throw new GraphError(0, "authentication");
@@ -109,8 +127,13 @@ export class GraphClient implements GraphOperations {
         continue;
       }
       if (response.ok) {
-        const data = (await response.json()) as { access_token?: string; expires_in?: number };
+        const data = (await response.json()) as {
+          access_token?: string;
+          expires_in?: number;
+          refresh_token?: string;
+        };
         if (!data.access_token) throw new GraphError(502, "authentication-response");
+        if (data.refresh_token) this.refreshToken = data.refresh_token;
         this.accessToken = {
           value: data.access_token,
           expiresAt: Date.now() + (data.expires_in ?? 3_600) * 1_000,

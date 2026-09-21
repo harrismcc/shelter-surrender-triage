@@ -101,6 +101,7 @@ describe("runtime provisioning decisions", () => {
       },
     };
     const config = {
+      microsoftAuthMode: "application",
       destinationFolderName: "Surrender Requests",
       mailbox: "intake@example.org",
       webhookUrl,
@@ -114,6 +115,46 @@ describe("runtime provisioning decisions", () => {
     expect(subscriptions).toHaveLength(1);
     expect(subscriptions[0]?.notificationUrl).toBe(webhookUrl);
     expect(subscriptions[0]?.lifecycleNotificationUrl).toBe(webhookUrl);
+  });
+
+  it("subscribes to the signed-in user's Inbox in delegated mode", async () => {
+    let createdResource: string | undefined;
+    const graph: ProvisioningGraphOperations = {
+      async listMailFolders() {
+        return [{ id: "folder-id", displayName: "Surrender Requests" }];
+      },
+      async createMailFolder() {
+        throw new Error("folder should already exist");
+      },
+      async listMasterCategories() {
+        return REQUIRED_MASTER_CATEGORIES.map((category) => ({ ...category }));
+      },
+      async createMasterCategory() {
+        throw new Error("categories should already exist");
+      },
+      async listSubscriptions() {
+        return [];
+      },
+      async createSubscription(created) {
+        createdResource = created.resource;
+      },
+      async renewSubscription() {
+        throw new Error("new subscription should not renew");
+      },
+      async deleteSubscription() {
+        throw new Error("new subscription should not delete");
+      },
+    };
+    const config = {
+      microsoftAuthMode: "delegated",
+      destinationFolderName: "Surrender Requests",
+      webhookUrl,
+      webhookClientState: "client-state",
+    } as Config;
+
+    await provisionRuntime(graph, config, now);
+
+    expect(createdResource).toBe("me/mailFolders('inbox')/messages");
   });
 
   it("reauthorizes immediately even when the subscription has more than a day remaining", async () => {

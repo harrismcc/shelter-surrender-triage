@@ -100,7 +100,9 @@ export async function provisionRuntime(
     await graph.createMasterCategory(category.displayName, category.color);
   }
 
-  const resource = `users/${config.mailbox}/mailFolders('inbox')/messages`;
+  const resource = config.microsoftAuthMode === "delegated"
+    ? "me/mailFolders('inbox')/messages"
+    : `users/${config.mailbox}/mailFolders('inbox')/messages`;
   const decision = decideSubscription(
     await graph.listSubscriptions(),
     resource,

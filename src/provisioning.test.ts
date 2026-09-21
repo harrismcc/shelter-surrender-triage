@@ -4,6 +4,7 @@ import type { Config } from "./config";
 import type { GraphSubscription, ProvisioningGraphOperations } from "./graph";
 import {
   decideSubscription,
+  masterCategoryColorUpdates,
   missingMasterCategories,
   provisionRuntime,
   reauthorizeSubscription,
@@ -56,7 +57,7 @@ describe("runtime provisioning decisions", () => {
     ).toBe("replace");
   });
 
-  it("creates only missing categories without changing an existing category", () => {
+  it("creates only missing categories", () => {
     const missing = missingMasterCategories([
       { displayName: "P1 — Immediate" },
       { displayName: "housing / landlord / moving" },
@@ -67,8 +68,21 @@ describe("runtime provisioning decisions", () => {
     expect(missing.find((category) => category.displayName === "P2 — Urgent")?.color).toBe("preset1");
   });
 
+  it("recolors managed categories without changing unrelated or matching categories", () => {
+    expect(masterCategoryColorUpdates([
+      { id: "p1", displayName: "P1 — Immediate", color: "preset12" },
+      { id: "housing", displayName: " housing / landlord / moving ", color: "preset7" },
+      { id: "staff", displayName: "Staff follow-up", color: "preset12" },
+    ])).toEqual([{ id: "p1", color: "preset0" }]);
+  });
+
   it("deletes and recreates a changed-endpoint subscription, then becomes idempotent", async () => {
     const operations: string[] = [];
+    const categories = REQUIRED_MASTER_CATEGORIES.map((category, index) => ({
+      id: `category-${index}`,
+      ...category,
+      color: index === 0 ? "preset12" : category.color,
+    }));
     const subscriptions: GraphSubscription[] = [
       { ...subscription("2026-09-23T12:00:01.000Z"), notificationUrl: "https://old.example/hook" },
     ];
@@ -80,10 +94,15 @@ describe("runtime provisioning decisions", () => {
         throw new Error("folder should already exist");
       },
       async listMasterCategories() {
-        return REQUIRED_MASTER_CATEGORIES.map((category) => ({ ...category }));
+        return categories;
       },
       async createMasterCategory() {
         throw new Error("categories should already exist");
+      },
+      async updateMasterCategoryColor(id, color) {
+        operations.push("recolor");
+        const category = categories.find((item) => item.id === id);
+        if (category) category.color = color;
       },
       async listSubscriptions() {
         return [...subscriptions];
@@ -111,7 +130,7 @@ describe("runtime provisioning decisions", () => {
     await provisionRuntime(graph, config, now);
     await provisionRuntime(graph, config, now);
 
-    expect(operations).toEqual(["delete", "create"]);
+    expect(operations).toEqual(["recolor", "delete", "create"]);
     expect(subscriptions).toHaveLength(1);
     expect(subscriptions[0]?.notificationUrl).toBe(webhookUrl);
     expect(subscriptions[0]?.lifecycleNotificationUrl).toBe(webhookUrl);
@@ -131,6 +150,9 @@ describe("runtime provisioning decisions", () => {
       },
       async createMasterCategory() {
         throw new Error("categories should already exist");
+      },
+      async updateMasterCategoryColor() {
+        throw new Error("category colors should already match");
       },
       async listSubscriptions() {
         return [];

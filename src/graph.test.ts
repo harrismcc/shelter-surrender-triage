@@ -123,6 +123,29 @@ describe("Microsoft Graph client", () => {
     expect(requestedUrls.some((url) => url.includes("subscriptions?$top"))).toBe(false);
   });
 
+  it("updates an existing master category color", async () => {
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    const fetcher = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+      const url = input.toString();
+      requests.push({ url, init });
+      if (url.startsWith("https://login.microsoftonline.com/")) {
+        return Response.json({ access_token: "access-token", expires_in: 3600 });
+      }
+      return Response.json({
+        id: "category/id",
+        displayName: "Animal medical issue",
+        color: "preset0",
+      });
+    };
+
+    await new GraphClient(config, fetcher as typeof fetch)
+      .updateMasterCategoryColor("category/id", "preset0");
+
+    expect(requests[1]?.url).toEndWith("/outlook/masterCategories/category%2Fid");
+    expect(requests[1]?.init?.method).toBe("PATCH");
+    expect(JSON.parse(String(requests[1]?.init?.body))).toEqual({ color: "preset0" });
+  });
+
   it("finds folders and categories that appear only on later pages", async () => {
     const folderPage2 = "https://graph.microsoft.com/v1.0/folders?page=2";
     const categoryPage2 = "https://graph.microsoft.com/v1.0/categories?page=2";

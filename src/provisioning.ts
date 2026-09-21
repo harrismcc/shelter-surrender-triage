@@ -1,5 +1,6 @@
 import type { Config } from "./config";
 import { ISSUE_CATEGORIES, PRIORITIES } from "./domain";
+import type { IssueCategory, Priority } from "./domain";
 import type {
   GraphSubscription,
   MailFolder,
@@ -7,18 +8,35 @@ import type {
   ProvisioningGraphOperations,
 } from "./graph";
 
-const CATEGORY_COLORS = new Map<string, string>([
-  ["P1 — Immediate", "preset0"],
-  ["P2 — Urgent", "preset1"],
-  ["P3 — Standard", "preset7"],
-  ["P4 — Lower urgency", "preset12"],
-  ...ISSUE_CATEGORIES.map((category) => [category, "preset10"] as const),
-]);
+const CATEGORY_COLORS: Record<Priority | IssueCategory, string> = {
+  "P1 — Immediate": "preset0",
+  "P2 — Urgent": "preset1",
+  "P3 — Standard": "preset7",
+  "P4 — Lower urgency": "preset4",
+  "Housing / landlord / moving": "preset7",
+  "Financial hardship": "preset3",
+  "Animal medical issue": "preset0",
+  "Owner medical issue": "preset9",
+  Behavior: "preset1",
+  "Bite / aggression / safety": "preset15",
+  "Animal-to-animal conflict": "preset16",
+  "Unable to care for animal": "preset6",
+  "Too many animals / possible hoarding": "preset8",
+  "Lack of time": "preset18",
+  "Family or life change": "preset24",
+  "Rehoming assistance": "preset4",
+  "Temporary foster / boarding need": "preset5",
+  "Veterinary assistance": "preset20",
+  "Food / supply assistance": "preset2",
+  "Behavior assistance": "preset21",
+  "Humane euthanasia request": "preset11",
+  "Other / unclear": "preset12",
+};
 
 export const REQUIRED_MASTER_CATEGORIES = [...PRIORITIES, ...ISSUE_CATEGORIES].map(
   (displayName) => ({
     displayName,
-    color: CATEGORY_COLORS.get(displayName) ?? "preset10",
+    color: CATEGORY_COLORS[displayName],
   }),
 );
 
@@ -31,6 +49,31 @@ export function missingMasterCategories(
   return REQUIRED_MASTER_CATEGORIES.filter(
     (category) => !names.has(category.displayName.toLocaleLowerCase("en-US")),
   );
+}
+
+export function masterCategoryColorUpdates(
+  existing: readonly MasterCategory[],
+): Array<{ id: string; color: string }> {
+  const requiredByName = new Map(
+    REQUIRED_MASTER_CATEGORIES.map((category) => [
+      category.displayName.toLocaleLowerCase("en-US"),
+      category,
+    ]),
+  );
+  const updates: Array<{ id: string; color: string }> = [];
+  for (const category of existing) {
+    const required = requiredByName.get(
+      category.displayName.trim().toLocaleLowerCase("en-US"),
+    );
+    if (
+      category.id &&
+      required &&
+      category.color.toLocaleLowerCase("en-US") !== required.color
+    ) {
+      updates.push({ id: category.id, color: required.color });
+    }
+  }
+  return updates;
 }
 
 export function findFolder(
@@ -98,6 +141,9 @@ export async function provisionRuntime(
   const existingCategories = await graph.listMasterCategories();
   for (const category of missingMasterCategories(existingCategories)) {
     await graph.createMasterCategory(category.displayName, category.color);
+  }
+  for (const category of masterCategoryColorUpdates(existingCategories)) {
+    await graph.updateMasterCategoryColor(category.id, category.color);
   }
 
   const resource = config.microsoftAuthMode === "delegated"

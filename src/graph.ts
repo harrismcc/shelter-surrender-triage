@@ -67,6 +67,7 @@ export interface ProvisioningGraphOperations {
   createMailFolder(displayName: string): Promise<MailFolder>;
   listMasterCategories(): Promise<MasterCategory[]>;
   createMasterCategory(displayName: string, color: string): Promise<void>;
+  updateMasterCategoryColor(id: string, color: string): Promise<void>;
   listSubscriptions(): Promise<GraphSubscription[]>;
   createSubscription(subscription: Omit<GraphSubscription, "id"> & { clientState: string }): Promise<void>;
   renewSubscription(id: string, expirationDateTime: string): Promise<void>;
@@ -312,6 +313,15 @@ export class GraphClient implements GraphOperations {
       `${this.mailboxPath}/outlook/masterCategories`,
       "create-master-category",
       { body: { displayName, color } },
+    );
+  }
+
+  async updateMasterCategoryColor(id: string, color: string): Promise<void> {
+    await this.request(
+      "PATCH",
+      `${this.mailboxPath}/outlook/masterCategories/${encodeURIComponent(id)}`,
+      "update-master-category",
+      { body: { color } },
     );
   }
 
